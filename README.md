@@ -65,35 +65,10 @@ NEXTAUTH_SECRET=nexus-nextauth-secret-key
 NEXTAUTH_URL=http://localhost:3000
 ```
 
-### 3. Database Setup
 
-Start MongoDB and initialize the Super Admin:
 
-```bash
-# Initialize Super Admin user
-npm run init-super-admin
-```
 
-This will create the default Super Admin with:
-- **ID**: `SUPERADMIN`
-- **PIN**: `12345`
 
-### 4. Run the Application
-
-```bash
-# Start development server
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## 📖 Usage Guide
-
-### Initial Setup (Super Admin)
-
-1. **Login** with Super Admin credentials:
-   - ID: `SUPERADMIN`
-   - PIN: `12345`
 
 2. **Create Schools**:
    - Navigate to Super Admin dashboard
