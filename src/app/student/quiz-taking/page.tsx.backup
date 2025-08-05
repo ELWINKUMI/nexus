@@ -1,0 +1,998 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Container,
+  Typography,
+  Card,
+  CardContent,
+  Button,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  Checkbox,
+  Paper,
+  Stack,
+  LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Stepper,
+  Step,
+  StepLabel,
+  Chip,
+  Alert,
+  Divider,
+  IconButton,
+  Tooltip,
+  Grid,
+  Avatar
+} from '@mui/material';
+import {
+  Timer as TimerIcon,
+  NavigateBefore as PrevIcon,
+  NavigateNext as NextIcon,
+  Flag as FlagIcon,
+  Check as CheckIcon,
+  Close as CloseIcon,
+  Warning as WarningIcon,
+  Quiz as QuizIcon,
+  AccessTime as TimeIcon,
+  Grade as GradeIcon,
+  TrendingUp as ScoreIcon,
+  Star as StarIcon,
+  Refresh as RetryIcon
+} from '@mui/icons-material';
+import { useRouter, useSearchParams } from 'next/navigation';
+
+interface Question {
+  id: string;
+  question: string;
+  type: 'multiple_choice' | 'multiple_select' | 'true_false';
+  options: string[];
+  correctAnswers: number[];
+  points: number;
+  explanation?: string;
+}
+
+interface Quiz {
+  id: string;
+  title: string;
+  description: string;
+  instructions?: string;
+  timeLimit: number; // in minutes
+  totalQuestions: number;
+  totalPoints: number;
+  attemptsAllowed: number;
+  attemptsUsed: number;
+  passwordProtected: boolean;
+  randomizeQuestions: boolean;
+  randomizeAnswers: boolean;
+  oneQuestionAtTime: boolean;
+  showCorrectAnswers: boolean;
+  showScoreImmediately: boolean;
+  questions: Question[];
+}
+
+interface QuizAttempt {
+  id: string;
+  quizId: string;
+  startTime: Date;
+  endTime?: Date;
+  answers: { [questionId: string]: number[] };
+  score?: number;
+  percentage?: number;
+  status: 'in-progress' | 'completed' | 'submitted';
+}
+
+export default function QuizTakingPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const quizId = searchParams.get('id');
+  const attemptId = searchParams.get('attemptId');
+  
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [attempt, setAttempt] = useState<QuizAttempt | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<{ [questionId: string]: number[] }>({});
+  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [showResultDialog, setShowResultDialog] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [quizStatus, setQuizStatus] = useState<'not-started' | 'in-progress' | 'completed'>('not-started');
+  const [finalResults, setFinalResults] = useState<any>(null);
+
+  useEffect(() => {
+    if (quizId) {
+      loadQuiz();
+    }
+  }, [quizId]);
+
+  useEffect(() => {
+    if (quiz && quizStatus === 'in-progress' && timeRemaining > 0) {
+      const timer = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            handleAutoSubmit();
+            return 0;
+          }
+          // Save time remaining every 30 seconds
+          if (prev % 30 === 0) {
+            saveTimeRemaining(prev - 1);
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [quiz, quizStatus, timeRemaining]);
+
+  const loadQuiz = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get quiz details
+      const quizResponse = await fetch(`/api/student/quizzes/${quizId}`, {
+        credentials: 'include'
+      });
+
+      if (!quizResponse.ok) {
+        if (quizResponse.status === 401) {
+          router.push('/auth/login');
+          return;
+        }
+        throw new Error('Failed to load quiz');
+      }
+
+      const quizData = await quizResponse.json();
+      setQuiz(quizData);
+
+      // If we have an active attempt, load it
+      if (quizData.activeAttempt) {
+        setAttempt({
+          id: quizData.activeAttempt.id,
+          quizId: quizData.id,
+          startTime: new Date(quizData.activeAttempt.startTime),
+          answers: {},
+          status: 'in-progress'
+        });
+        setTimeRemaining(quizData.activeAttempt.timeRemaining || quizData.timeLimit * 60);
+        setQuizStatus('in-progress');
+        
+        // Load saved answers
+        const answersMap: { [questionId: string]: number[] } = {};
+        quizData.activeAttempt.answers.forEach((answer: any) => {
+          answersMap[answer.questionId] = answer.selectedAnswers;
+        });
+        setSelectedAnswers(answersMap);
+        setFlaggedQuestions(new Set(quizData.activeAttempt.flaggedQuestions));
+      }
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error loading quiz:', error);
+      setIsLoading(false);
+      router.push('/student/quizzes');
+    }
+  };
+
+  const saveTimeRemaining = async (time: number) => {
+    if (attempt?.id) {
+      try {
+        await fetch(`/api/student/quiz-attempts/${attempt.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            action: 'update_time',
+            timeRemaining: time
+          })
+        });
+      } catch (error) {
+        console.error('Error saving time:', error);
+      }
+    }
+  };
+
+  const startQuiz = async () => {
+    if (!quiz) return;
+
+    try {
+      // Start a new attempt if we don't have one
+      if (!attemptId) {
+        const response = await fetch(`/api/student/quizzes/${quizId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({})
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setAttempt({
+            id: data.attemptId,
+            quizId: quiz.id,
+            startTime: new Date(data.startTime),
+            answers: {},
+            status: 'in-progress'
+          });
+          setTimeRemaining(data.timeRemaining);
+        } else {
+          throw new Error('Failed to start quiz');
+        }
+      }
+
+      setQuizStatus('in-progress');
+    } catch (error) {
+      console.error('Error starting quiz:', error);
+  };
+
+  const handleAnswerChange = async (questionId: string, answerIndex: number, isMultiSelect: boolean = false) => {
+    const newAnswers = isMultiSelect 
+      ? (selectedAnswers[questionId] || []).includes(answerIndex)
+        ? (selectedAnswers[questionId] || []).filter(a => a !== answerIndex)
+        : [...(selectedAnswers[questionId] || []), answerIndex]
+      : [answerIndex];
+
+    setSelectedAnswers(prev => ({ ...prev, [questionId]: newAnswers }));
+
+    // Save answer to the server
+    if (attempt?.id) {
+      try {
+        await fetch(`/api/student/quiz-attempts/${attempt.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            action: 'save_answer',
+            questionId,
+            selectedAnswers: newAnswers
+          })
+        });
+      } catch (error) {
+        console.error('Error saving answer:', error);
+      }
+    }
+  };
+
+  const toggleFlag = async (questionId: string) => {
+    setFlaggedQuestions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(questionId)) {
+        newSet.delete(questionId);
+      } else {
+        newSet.add(questionId);
+      }
+      return newSet;
+    });
+
+    // Save flag to the server
+    if (attempt?.id) {
+      try {
+        await fetch(`/api/student/quiz-attempts/${attempt.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            action: 'flag_question',
+            questionId
+          })
+        });
+      } catch (error) {
+        console.error('Error saving flag:', error);
+      }
+    }
+  };
+
+  const goToQuestion = (index: number) => {
+    if (index >= 0 && index < quiz!.questions.length) {
+      setCurrentQuestionIndex(index);
+    }
+  };
+
+  const handleAutoSubmit = () => {
+    submitQuiz(true);
+  };
+
+  const submitQuiz = async (autoSubmit: boolean = false) => {
+    if (!quiz || !attempt) return;
+
+    try {
+      const response = await fetch(`/api/student/quiz-attempts/${attempt.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const results = await response.json();
+        setFinalResults(results);
+        setQuizStatus('completed');
+        setShowResultDialog(true);
+      } else {
+        console.error('Failed to submit quiz');
+      }
+    } catch (error) {
+      console.error('Error submitting quiz:', error);
+    }
+
+    setShowSubmitDialog(false);
+  };
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  const getTimeColor = () => {
+    if (!quiz) return 'success';
+    const totalTime = quiz.timeLimit * 60;
+    const percentage = (timeRemaining / totalTime) * 100;
+    
+    if (percentage > 50) return 'success';
+    if (percentage > 25) return 'warning';
+    return 'error';
+  };
+
+  const getProgressPercentage = () => {
+    if (!quiz) return 0;
+    const answeredQuestions = Object.keys(selectedAnswers).length;
+    return (answeredQuestions / quiz.questions.length) * 100;
+  };
+
+  if (isLoading) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+          <LinearProgress sx={{ width: '50%' }} />
+        </Box>
+      </Container>
+    );
+  }
+
+  if (!quiz) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Alert severity="error">Quiz not found</Alert>
+      </Container>
+    );
+  }
+
+  if (quizStatus === 'not-started') {
+    return (
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Card>
+          <CardContent sx={{ p: 4 }}>
+            <Box display="flex" alignItems="center" gap={2} mb={3}>
+              <Avatar sx={{ bgcolor: 'primary.main', width: 60, height: 60 }}>
+                <QuizIcon sx={{ fontSize: 30 }} />
+              </Avatar>
+              <Box>
+                <Typography variant="h4" fontWeight="bold" gutterBottom>
+                  {quiz.title}
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  {quiz.description}
+                </Typography>
+              </Box>
+            </Box>
+
+            <Grid container spacing={2} sx={{ mb: 4 }}>
+              <Grid item xs={6} sm={3}>
+                <Paper sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography variant="h6" color="primary" fontWeight="bold">
+                    {quiz.totalQuestions}
+                  </Typography>
+                  <Typography variant="body2">Questions</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <Paper sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography variant="h6" color="warning.main" fontWeight="bold">
+                    {quiz.timeLimit} min
+                  </Typography>
+                  <Typography variant="body2">Time Limit</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <Paper sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography variant="h6" color="success.main" fontWeight="bold">
+                    {quiz.totalPoints}
+                  </Typography>
+                  <Typography variant="body2">Total Points</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <Paper sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography variant="h6" color="info.main" fontWeight="bold">
+                    {quiz.attemptsUsed}/{quiz.attemptsAllowed || '∞'}
+                  </Typography>
+                  <Typography variant="body2">Attempts</Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+
+            <Alert severity="info" sx={{ mb: 3 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Quiz Instructions:
+              </Typography>
+              <Typography variant="body2">
+                • You have {quiz.timeLimit} minutes to complete this quiz<br/>
+                • You can navigate between questions using the navigation buttons<br/>
+                • Flag questions for review if needed<br/>
+                • Submit your quiz before time runs out<br/>
+                • Answer all questions to the best of your ability
+              </Typography>
+            </Alert>
+
+            <Stack direction="row" spacing={2} justifyContent="center">
+              <Button 
+                variant="outlined" 
+                onClick={() => router.back()}
+                size="large"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="contained" 
+                onClick={startQuiz}
+                size="large"
+                startIcon={<QuizIcon />}
+              >
+                Start Quiz
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Container>
+    );
+  }
+
+  if (quizStatus === 'completed' && finalResults) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Card>
+          <CardContent sx={{ p: 4 }}>
+            <Box textAlign="center" mb={4}>
+              <Avatar 
+                sx={{ 
+                  bgcolor: finalResults.passed ? 'success.main' : 'error.main',
+                  width: 80, 
+                  height: 80,
+                  mx: 'auto',
+                  mb: 2
+                }}
+              >
+                {finalResults.passed ? <CheckIcon sx={{ fontSize: 40 }} /> : <CloseIcon sx={{ fontSize: 40 }} />}
+              </Avatar>
+              <Typography variant="h4" fontWeight="bold" gutterBottom>
+                Quiz {finalResults.passed ? 'Completed!' : 'Needs Improvement'}
+              </Typography>
+              <Typography variant="h2" color={finalResults.passed ? 'success.main' : 'error.main'} fontWeight="bold">
+                {finalResults.percentage}%
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                {finalResults.score} out of {finalResults.totalPoints} points
+              </Typography>
+            </Box>
+
+            <Grid container spacing={2} sx={{ mb: 4 }}>
+              <Grid item xs={6}>
+                <Paper sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography variant="h6" color="success.main" fontWeight="bold">
+                    {finalResults.correctAnswers}/{finalResults.totalQuestions}
+                  </Typography>
+                  <Typography variant="body2">Correct Answers</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={6}>
+                <Paper sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography variant="h6" color="info.main" fontWeight="bold">
+                    {formatTime(finalResults.timeUsed)}
+                  </Typography>
+                  <Typography variant="body2">Time Used</Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+
+            <Stack direction="row" spacing={2} justifyContent="center">
+              <Button 
+                variant="outlined" 
+                onClick={() => router.push('/student/quizzes')}
+                size="large"
+              >
+                Back to Quizzes
+              </Button>
+              <Button 
+                variant="contained" 
+                onClick={() => window.location.reload()}
+                size="large"
+                startIcon={<RetryIcon />}
+              >
+                Retake Quiz
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Container>
+    );
+  }
+
+  // Quiz in progress
+  const currentQuestion = quiz.questions[currentQuestionIndex];
+  const userAnswers = selectedAnswers[currentQuestion.id] || [];
+
+  // Enhanced option handling with better fallbacks
+  const getQuestionOptions = (question: Question) => {
+    if (question.type === 'true_false' || question.type === 'true-false') {
+      return ['True', 'False'];
+    }
+    
+    if (question.options && question.options.length > 0) {
+      return question.options;
+    }
+    
+    // Enhanced fallback options based on question type
+    return question.type === 'multiple_select' 
+      ? ['Select Option A', 'Select Option B', 'Select Option C', 'Select Option D']
+      : ['Choose Option A', 'Choose Option B', 'Choose Option C', 'Choose Option D'];
+  };
+
+  const questionOptions = getQuestionOptions(currentQuestion);
+
+  // Debug: log the current question data
+  console.log('Current question:', currentQuestion);
+  console.log('Question options:', questionOptions);
+  console.log('Question type:', currentQuestion.type);
+
+  return (
+    <Container maxWidth="xl" sx={{ py: 2 }}>
+      {/* Enhanced Header with Better Visual Hierarchy */}
+      <Paper 
+        sx={{ 
+          p: 3, 
+          mb: 3, 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white'
+        }}
+      >
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+          <Box>
+            <Typography variant="h4" fontWeight="bold" gutterBottom>
+              {quiz.title}
+            </Typography>
+            <Typography variant="h6" sx={{ opacity: 0.9 }}>
+              Question {currentQuestionIndex + 1} of {quiz.questions.length}
+            </Typography>
+          </Box>
+          
+          <Box display="flex" alignItems="center" gap={3}>
+            <Paper sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)' }}>
+              <Stack direction="row" alignItems="center" gap={2}>
+                <TimerIcon sx={{ color: 'white' }} />
+                <Typography variant="h5" fontWeight="bold" color="white">
+                  {formatTime(timeRemaining)}
+                </Typography>
+              </Stack>
+            </Paper>
+            
+            <Box sx={{ width: 150 }}>
+              <Typography variant="body2" sx={{ mb: 1, opacity: 0.9 }}>
+                Time Progress
+              </Typography>
+              <LinearProgress
+                variant="determinate"
+                value={(timeRemaining / (quiz.timeLimit * 60)) * 100}
+                sx={{
+                  height: 12,
+                  borderRadius: 6,
+                  bgcolor: 'rgba(255,255,255,0.3)',
+                  '& .MuiLinearProgress-bar': {
+                    backgroundColor: timeRemaining < 300 ? '#f44336' : timeRemaining < 600 ? '#ff9800' : '#4caf50',
+                    borderRadius: 6
+                  }
+                }}
+              />
+            </Box>
+          </Box>
+        </Stack>
+
+        {/* Enhanced Progress Bar */}
+        <Box>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+            <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
+              Quiz Progress
+            </Typography>
+            <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
+              {Object.keys(selectedAnswers).length}/{quiz.questions.length} answered ({Math.round((Object.keys(selectedAnswers).length / quiz.questions.length) * 100)}%)
+            </Typography>
+          </Box>
+          <LinearProgress
+            variant="determinate"
+            value={getProgressPercentage()}
+            sx={{ 
+              height: 8, 
+              borderRadius: 4,
+              bgcolor: 'rgba(255,255,255,0.3)',
+              '& .MuiLinearProgress-bar': {
+                bgcolor: 'rgba(255,255,255,0.8)',
+                borderRadius: 4
+              }
+            }}
+          />
+        </Box>
+      </Paper>
+
+      <Grid container spacing={3}>
+        {/* Enhanced Question Area */}
+        <Grid item xs={12} lg={8}>
+          <Card elevation={3}>
+            <CardContent sx={{ p: 4 }}>
+              {/* Question Header with Enhanced Styling */}
+              <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={4}>
+                <Box flex={1} sx={{ pr: 2 }}>
+                  <Stack direction="row" alignItems="center" gap={2} mb={2}>
+                    <Chip 
+                      label={`Question ${currentQuestionIndex + 1}`} 
+                      variant="outlined" 
+                      color="primary"
+                      size="medium"
+                    />
+                    <Chip 
+                      label={`${currentQuestion.points} points`} 
+                      color="success" 
+                      size="medium"
+                    />
+                    <Chip 
+                      label={currentQuestion.type.replace('_', ' ').toUpperCase()} 
+                      color="info" 
+                      size="medium"
+                    />
+                  </Stack>
+                  
+                  <Paper 
+                    sx={{ 
+                      p: 3, 
+                      bgcolor: 'grey.50', 
+                      border: '2px solid',
+                      borderColor: 'primary.100'
+                    }}
+                  >
+                    <Typography variant="h5" fontWeight="medium" sx={{ lineHeight: 1.6 }}>
+                      {currentQuestion.question}
+                    </Typography>
+                  </Paper>
+                </Box>
+                
+                <Tooltip title={flaggedQuestions.has(currentQuestion.id) ? 'Remove flag' : 'Flag for review'}>
+                  <IconButton
+                    onClick={() => toggleFlag(currentQuestion.id)}
+                    color={flaggedQuestions.has(currentQuestion.id) ? 'warning' : 'default'}
+                    size="large"
+                    sx={{ 
+                      border: '2px solid',
+                      borderColor: flaggedQuestions.has(currentQuestion.id) ? 'warning.main' : 'grey.300'
+                    }}
+                  >
+                    <FlagIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+
+              {/* Enhanced Answer Options with Better Layout */}
+              <Box sx={{ mt: 4 }}>
+                <Typography variant="h6" gutterBottom sx={{ mb: 3, color: 'text.secondary' }}>
+                  Choose your answer{currentQuestion.type === 'multiple_select' ? '(s)' : ''}:
+                </Typography>
+                
+                {currentQuestion.type === 'true_false' || currentQuestion.type === 'true-false' ? (
+                  <RadioGroup
+                    value={userAnswers[0] ?? ''}
+                    onChange={(e) => handleAnswerChange(currentQuestion.id, parseInt(e.target.value))}
+                  >
+                    <Grid container spacing={2}>
+                      {questionOptions.map((option, index) => (
+                        <Grid item xs={12} sm={6} key={index}>
+                          <FormControlLabel
+                            value={index}
+                            control={<Radio size="large" />}
+                            label={
+                              <Typography variant="h6" sx={{ py: 2, fontWeight: 'medium' }}>
+                                {option}
+                              </Typography>
+                            }
+                            sx={{
+                              p: 3,
+                              m: 0,
+                              width: '100%',
+                              border: '2px solid',
+                              borderColor: userAnswers.includes(index) ? 'primary.main' : 'grey.300',
+                              borderRadius: 3,
+                              bgcolor: userAnswers.includes(index) ? 'primary.50' : 'grey.50',
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                bgcolor: userAnswers.includes(index) ? 'primary.100' : 'grey.100',
+                                borderColor: 'primary.main',
+                                transform: 'translateY(-2px)',
+                                boxShadow: 3
+                              }
+                            }}
+                          />
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </RadioGroup>
+                ) : currentQuestion.type === 'multiple_choice' ? (
+                  <RadioGroup
+                    value={userAnswers[0] ?? ''}
+                    onChange={(e) => handleAnswerChange(currentQuestion.id, parseInt(e.target.value))}
+                  >
+                    <Grid container spacing={2}>
+                      {questionOptions.map((option, index) => (
+                        <Grid item xs={12} key={index}>
+                          <FormControlLabel
+                            value={index}
+                            control={<Radio size="large" />}
+                            label={
+                              <Typography variant="body1" sx={{ py: 2, fontSize: '1.1rem' }}>
+                                <strong>{String.fromCharCode(65 + index)}.</strong> {option}
+                              </Typography>
+                            }
+                            sx={{
+                              p: 3,
+                              m: 0,
+                              width: '100%',
+                              border: '2px solid',
+                              borderColor: userAnswers.includes(index) ? 'primary.main' : 'grey.300',
+                              borderRadius: 3,
+                              bgcolor: userAnswers.includes(index) ? 'primary.50' : 'grey.50',
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                bgcolor: userAnswers.includes(index) ? 'primary.100' : 'grey.100',
+                                borderColor: 'primary.main',
+                                transform: 'translateY(-2px)',
+                                boxShadow: 3
+                              }
+                            }}
+                          />
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </RadioGroup>
+                ) : (
+                  // Multiple select with enhanced layout
+                  <Grid container spacing={2}>
+                    {questionOptions.map((option, index) => (
+                      <Grid item xs={12} key={index}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={userAnswers.includes(index)}
+                              onChange={() => handleAnswerChange(currentQuestion.id, index, true)}
+                              size="large"
+                            />
+                          }
+                          label={
+                            <Typography variant="body1" sx={{ py: 2, fontSize: '1.1rem' }}>
+                              <strong>{String.fromCharCode(65 + index)}.</strong> {option}
+                            </Typography>
+                          }
+                          sx={{
+                            p: 3,
+                            m: 0,
+                            width: '100%',
+                            border: '2px solid',
+                            borderColor: userAnswers.includes(index) ? 'primary.main' : 'grey.300',
+                            borderRadius: 3,
+                            bgcolor: userAnswers.includes(index) ? 'primary.50' : 'grey.50',
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                              bgcolor: userAnswers.includes(index) ? 'primary.100' : 'grey.100',
+                              borderColor: 'primary.main',
+                              transform: 'translateY(-2px)',
+                              boxShadow: 3
+                            }
+                          }}
+                        />
+                      </Grid>
+                    ))}
+                  </Grid>
+                )}
+                
+                {/* Answer Status Indicator */}
+                <Box sx={{ mt: 3, p: 2, bgcolor: 'info.50', borderRadius: 2 }}>
+                  <Typography variant="body2" color="info.main">
+                    {userAnswers.length > 0 
+                      ? `✓ Answer selected: ${userAnswers.map(i => questionOptions[i]).join(', ')}`
+                      : '⚠ No answer selected yet'
+                    }
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* Enhanced Navigation */}
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 5, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Button
+                  startIcon={<PrevIcon />}
+                  onClick={() => goToQuestion(currentQuestionIndex - 1)}
+                  disabled={currentQuestionIndex === 0}
+                  variant="outlined"
+                  size="large"
+                  sx={{ px: 4 }}
+                >
+                  Previous
+                </Button>
+
+                <Box display="flex" gap={2}>
+                  {currentQuestionIndex === quiz.questions.length - 1 ? (
+                    <Button
+                      variant="contained"
+                      color="success"
+                      onClick={() => setShowSubmitDialog(true)}
+                      size="large"
+                      sx={{ px: 4, py: 1.5 }}
+                      startIcon={<CheckIcon />}
+                    >
+                      Submit Quiz
+                    </Button>
+                  ) : (
+                    <Button
+                      endIcon={<NextIcon />}
+                      onClick={() => goToQuestion(currentQuestionIndex + 1)}
+                      variant="contained"
+                      size="large"
+                      sx={{ px: 4 }}
+                    >
+                      Next Question
+                    </Button>
+                  )}
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Enhanced Navigation Sidebar */}
+        <Grid item xs={12} lg={4}>
+          <Stack spacing={3}>
+            {/* Question Navigator */}
+            <Card elevation={3}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <QuizIcon color="primary" />
+                  Question Navigator
+                </Typography>
+                
+                <Grid container spacing={1.5} sx={{ mb: 3 }}>
+                  {quiz.questions.map((_, index) => {
+                    const isAnswered = selectedAnswers[quiz.questions[index].id]?.length > 0;
+                    const isCurrent = index === currentQuestionIndex;
+                    const isFlagged = flaggedQuestions.has(quiz.questions[index].id);
+                    
+                    return (
+                      <Grid item xs={4} key={index}>
+                        <Button
+                          fullWidth
+                          variant={isCurrent ? 'contained' : isAnswered ? 'outlined' : 'text'}
+                          color={isAnswered ? 'success' : isCurrent ? 'primary' : 'inherit'}
+                          onClick={() => goToQuestion(index)}
+                          sx={{ 
+                            minWidth: 0, 
+                            aspectRatio: '1',
+                            fontSize: '1rem',
+                            fontWeight: 'bold',
+                            position: 'relative',
+                            border: isFlagged ? '2px solid orange' : undefined
+                          }}
+                        >
+                          {index + 1}
+                          {isFlagged && (
+                            <FlagIcon 
+                              sx={{ 
+                                position: 'absolute',
+                                top: 2,
+                                right: 2,
+                                fontSize: 12,
+                                color: 'orange'
+                              }} 
+                            />
+                          )}
+                        </Button>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+
+                <Divider sx={{ my: 2 }} />
+
+                {/* Enhanced Legend */}
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom fontWeight="bold">
+                    Legend:
+                  </Typography>
+                  <Stack spacing={1.5}>
+                    <Box display="flex" alignItems="center" gap={2}>
+                      <Box sx={{ width: 20, height: 20, bgcolor: 'success.main', borderRadius: 1 }} />
+                      <Typography variant="body2">Answered ({Object.keys(selectedAnswers).length})</Typography>
+                    </Box>
+                    <Box display="flex" alignItems="center" gap={2}>
+                      <Box sx={{ width: 20, height: 20, bgcolor: 'primary.main', borderRadius: 1 }} />
+                      <Typography variant="body2">Current Question</Typography>
+                    </Box>
+                    <Box display="flex" alignItems="center" gap={2}>
+                      <Box sx={{ width: 20, height: 20, border: '2px solid', borderColor: 'grey.400', borderRadius: 1 }} />
+                      <Typography variant="body2">Unanswered ({quiz.questions.length - Object.keys(selectedAnswers).length})</Typography>
+                    </Box>
+                    <Box display="flex" alignItems="center" gap={2}>
+                      <FlagIcon sx={{ fontSize: 20, color: 'orange' }} />
+                      <Typography variant="body2">Flagged ({flaggedQuestions.size})</Typography>
+                    </Box>
+                  </Stack>
+                </Box>
+              </CardContent>
+            </Card>
+
+            {/* Quiz Info Summary */}
+            <Card elevation={3}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Quiz Summary
+                </Typography>
+                <Stack spacing={2}>
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">Total Questions:</Typography>
+                    <Typography variant="body2" fontWeight="bold">{quiz.questions.length}</Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">Total Points:</Typography>
+                    <Typography variant="body2" fontWeight="bold">{quiz.totalPoints}</Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">Time Limit:</Typography>
+                    <Typography variant="body2" fontWeight="bold">{quiz.timeLimit} minutes</Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="body2" color="text.secondary">Time Remaining:</Typography>
+                    <Typography variant="body2" fontWeight="bold" color={timeRemaining < 300 ? 'error.main' : 'text.primary'}>
+                      {formatTime(timeRemaining)}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          </Stack>
+        </Grid>
+      </Grid>
+
+      {/* Submit Confirmation Dialog */}
+      <Dialog open={showSubmitDialog} onClose={() => setShowSubmitDialog(false)}>
+        <DialogTitle>Submit Quiz?</DialogTitle>
+        <DialogContent>
+          <Typography gutterBottom>
+            Are you sure you want to submit your quiz? You have answered{' '}
+            {Object.keys(selectedAnswers).length} out of {quiz.questions.length} questions.
+          </Typography>
+          {Object.keys(selectedAnswers).length < quiz.questions.length && (
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              You have {quiz.questions.length - Object.keys(selectedAnswers).length} unanswered questions.
+              These will be marked as incorrect.
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowSubmitDialog(false)}>
+            Continue Quiz
+          </Button>
+          <Button onClick={() => submitQuiz()} variant="contained" color="success">
+            Submit Quiz
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
+  );
+}
