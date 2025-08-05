@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # NEXUS - Learning Management System
 
 A comprehensive, multi-role Learning Management System designed for schools with advanced assessment tools and role-based access control.
@@ -288,3 +289,6 @@ For support and questions:
 ---
 
 **NEXUS LMS** - Empowering Education Through Technology
+=======
+# nexus
+>>>>>>> 402c1db7b08591c5be6da6bd773bd51cb7fcbc76
