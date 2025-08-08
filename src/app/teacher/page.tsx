@@ -2448,6 +2448,7 @@ export default function TeacherDashboard() {
           borderBottom: '1px solid rgba(255,255,255,0.1)',
           bgcolor: 'rgba(255,255,255,0.05)'
         }}>
+<<<<<<< HEAD
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
             <AccountCircle sx={{ fontSize: 48 }} />
             <Box>
@@ -2463,6 +2464,28 @@ export default function TeacherDashboard() {
             </Box>
           </Box>
         </Box>
+=======
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <AccountCircle sx={{ fontSize: 48 }} />
+          <Box>
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+              {user?.name}
+            </Typography>
+            <Typography variant="caption" sx={{ opacity: 0.8 }}>
+              Teacher
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block', opacity: 0.7 }}>
+              ID: {user?.id}
+            </Typography>
+            {dashboardData?.schoolName && (
+              <Typography variant="caption" sx={{ display: 'block', opacity: 0.7 }}>
+                School: {dashboardData.schoolName}
+              </Typography>
+            )}
+          </Box>
+        </Box>
+        </Box>
+>>>>>>> 99ca4a1 (Initial commit)
 
         {/* Navigation */}
         <Box sx={{ p: 2 }}>

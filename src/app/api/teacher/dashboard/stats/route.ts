@@ -32,6 +32,15 @@ export async function GET(request: NextRequest) {
       console.log('GET Dashboard Stats - Teacher not found for ID:', teacherId);
       return NextResponse.json({ error: 'Teacher not found' }, { status: 404 });
     }
+<<<<<<< HEAD
+=======
+    // Get school name
+    let schoolName = '';
+    if (teacher.schoolId) {
+      const school = await (await import('@/models')).School.findOne({ _id: teacher.schoolId });
+      schoolName = school?.name || '';
+    }
+>>>>>>> 99ca4a1 (Initial commit)
 
     // Get all data in parallel for efficiency
     const [classes, subjects, assignments, students, assignmentSubmissions, quizzes, quizAttempts] = await Promise.all([
@@ -207,7 +216,11 @@ export async function GET(request: NextRequest) {
       activeProjects: assignments.filter(a => a.status === 'active').length
     });
 
+<<<<<<< HEAD
     return NextResponse.json(dashboardStats);
+=======
+    return NextResponse.json({ ...dashboardStats, schoolName });
+>>>>>>> 99ca4a1 (Initial commit)
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
     return NextResponse.json(

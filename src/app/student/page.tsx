@@ -178,6 +178,14 @@ export default function StudentDashboard() {
               <Typography variant="caption" sx={{ display: 'block', opacity: 0.7 }}>
                 ID: {user?.id}
               </Typography>
+<<<<<<< HEAD
+=======
+              {dashboardData?.student?.schoolName && (
+                <Typography variant="caption" sx={{ display: 'block', opacity: 0.7 }}>
+                  School: {dashboardData.student.schoolName}
+                </Typography>
+              )}
+>>>>>>> 99ca4a1 (Initial commit)
             </Box>
           </Box>
         </Box>

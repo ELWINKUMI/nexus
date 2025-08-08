@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+<<<<<<< HEAD
 import {
   Box,
   Container,
@@ -21,6 +22,12 @@ import {
   Link,
   Divider
 } from '@mui/material';
+=======
+import { useRouter, useParams } from 'next/navigation';
+import MathRenderer from '@/components/MathRenderer';
+import { Box, Container, Typography, Card, CardContent, Button, Grid, LinearProgress, Alert, Chip, Paper, Stack, Accordion, AccordionSummary, AccordionDetails, Breadcrumbs, Link, Divider } from '@mui/material';
+
+>>>>>>> 99ca4a1 (Initial commit)
 import {
   CheckCircle as CorrectIcon,
   Cancel as WrongIcon,
@@ -31,6 +38,7 @@ import {
   Timer as TimerIcon,
   Assessment as AssessmentIcon
 } from '@mui/icons-material';
+<<<<<<< HEAD
 import { useRouter, useParams } from 'next/navigation';
 
 interface QuizResult {
@@ -51,6 +59,10 @@ interface QuizResult {
 }
 
 interface QuestionResult {
+=======
+
+type QuestionResult = {
+>>>>>>> 99ca4a1 (Initial commit)
   id: string;
   question: string;
   type: 'multiple-choice' | 'multiple-select' | 'true-false';
@@ -61,7 +73,11 @@ interface QuestionResult {
   points: number;
   earnedPoints: number;
   explanation?: string;
+<<<<<<< HEAD
 }
+=======
+};
+>>>>>>> 99ca4a1 (Initial commit)
 
 export default function QuizResultsPage() {
   const router = useRouter();
@@ -74,11 +90,16 @@ export default function QuizResultsPage() {
 
   useEffect(() => {
     loadQuizResult();
+<<<<<<< HEAD
+=======
+    // eslint-disable-next-line
+>>>>>>> 99ca4a1 (Initial commit)
   }, [quizId]);
 
   const loadQuizResult = async () => {
     try {
       setIsLoading(true);
+<<<<<<< HEAD
       
       // For now, use mockup data since we're implementing the feature
       const mockResult: QuizResult = {
@@ -242,11 +263,127 @@ export default function QuizResultsPage() {
       setResult(mockResult);
     } catch (error) {
       console.error('Error loading quiz result:', error);
+=======
+      // 1. Fetch quiz data (for question text/options)
+      const quizRes = await fetch(`/api/student/quizzes/${quizId}`, { credentials: 'include' });
+      if (!quizRes.ok) throw new Error('Failed to fetch quiz');
+      const quizData = await quizRes.json();
+
+      // 2. Find the latest submitted attempt (status: 'submitted' or 'completed')
+      // We'll use the latest from quizData.activeAttempt if status is submitted, else fetch all attempts
+      let attempt = null;
+      if (quizData.activeAttempt && (quizData.activeAttempt.status === 'submitted' || quizData.activeAttempt.status === 'completed')) {
+        attempt = quizData.activeAttempt;
+      } else {
+        // Try to fetch all attempts for this quiz and student
+        // (Assume API: /api/student/quiz-attempts?quizId=... returns all attempts for this quiz)
+        // If not available, fallback to guessing from quizData
+        // For now, try to get attemptId from quizData.activeAttempt or skip
+        if (quizData.activeAttempt && quizData.activeAttempt.id) {
+          const attRes = await fetch(`/api/student/quiz-attempts/${quizData.activeAttempt.id}`, { credentials: 'include' });
+          if (attRes.ok) {
+            attempt = await attRes.json();
+          }
+        }
+      }
+      if (!attempt) {
+        setResult(null);
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. Build result object
+      // Map answers and scores
+      const questionMap = new Map();
+      (quizData.questions || []).forEach((q: any) => questionMap.set(q.id, q));
+
+      // If attempt.answers is array of {questionId, selectedAnswers}, map to questionId: selectedAnswers
+      const answersMap: Record<string, string[]> = {};
+      (attempt.answers || []).forEach((a: any) => {
+        answersMap[a.questionId] = a.selectedAnswers;
+      });
+
+      // If attempt has score/percentage, use it; else calculate
+      let totalScore = attempt.score ?? 0;
+      let totalPoints = quizData.totalPoints ?? 0;
+      let percentage = attempt.percentage ?? (totalPoints ? Math.round((totalScore / totalPoints) * 100) : 0);
+      let submittedAt = attempt.submittedAt || attempt.endTime || attempt.updatedAt || new Date().toISOString();
+      let timeSpent = attempt.startTime && attempt.endTime ? (new Date(attempt.endTime).getTime() - new Date(attempt.startTime).getTime()) / 1000 : 0;
+
+      // Build questions array for result
+      const questions: QuestionResult[] = (quizData.questions || []).map((q: any) => {
+        const userAnswers = answersMap[q.id] || [];
+        let isCorrect = false;
+        let earnedPoints = 0;
+        // Compare answers for correctness
+        if (q.type === 'multiple-choice' || q.type === 'true-false') {
+          isCorrect = userAnswers.length === 1 && q.correctAnswers && userAnswers[0] === q.correctAnswers[0];
+          earnedPoints = isCorrect ? q.points : 0;
+        } else if (q.type === 'multiple-select' || q.type === 'multiple-answer') {
+          // Accept both type names
+          const correct = (q.correctAnswers || []).sort().join(',');
+          const user = [...userAnswers].sort().join(',');
+          isCorrect = correct === user;
+          earnedPoints = isCorrect ? q.points : 0;
+        }
+        return {
+          id: q.id,
+          question: q.question,
+          type: q.type,
+          options: q.options || [],
+          correctAnswers: q.correctAnswers || [],
+          userAnswers,
+          isCorrect,
+          points: q.points,
+          earnedPoints,
+          explanation: q.explanation || q.feedback || '',
+        };
+      });
+
+      // Compose QuizResult
+      const realResult: QuizResult = {
+        id: attempt._id || attempt.id || '',
+        quizId: quizData.id,
+        quizTitle: quizData.title,
+        subject: quizData.subject || 'Mathematics',
+        subjectColor: quizData.subjectColor || '#2196F3',
+        teacher: quizData.teacher || 'Teacher',
+        score: totalScore,
+        totalPoints: totalPoints,
+        percentage: percentage,
+        letterGrade: getLetterGrade(percentage),
+        timeSpent: timeSpent,
+        submittedAt: submittedAt,
+        feedback: attempt.feedback || '',
+        questions,
+      };
+      setResult(realResult);
+    } catch (error) {
+      console.error('Error loading quiz result:', error);
+      setResult(null);
+>>>>>>> 99ca4a1 (Initial commit)
     } finally {
       setIsLoading(false);
     }
   };
 
+<<<<<<< HEAD
+=======
+  // Helper to get letter grade
+  function getLetterGrade(percentage: number) {
+    if (percentage >= 90) return 'A';
+    if (percentage >= 80) return 'B';
+    if (percentage >= 70) return 'C';
+    if (percentage >= 60) return 'D';
+    return 'F';
+  }
+              'x² + 5x + 6 = 0',
+              '2x + 3 = 0',
+              '3x² - 2x + 1 = 0',
+              'x³ + x² + 1 = 0'
+// ...existing code...
+
+>>>>>>> 99ca4a1 (Initial commit)
   const getGradeColor = (percentage: number) => {
     if (percentage >= 90) return '#4CAF50'; // Green
     if (percentage >= 80) return '#2196F3'; // Blue
@@ -489,6 +626,7 @@ export default function QuizResultsPage() {
 
               {question.type === 'multiple-choice' && (
                 <Box sx={{ mb: 2 }}>
+<<<<<<< HEAD
                   {question.options.map((option) => {
                     const isCorrect = question.correctAnswers.includes(option);
                     const isUserAnswer = question.userAnswers.includes(option);
@@ -496,6 +634,15 @@ export default function QuizResultsPage() {
                     return (
                       <Box
                         key={option}
+=======
+                  {question.options.map((option, idx) => {
+                    const isCorrect = question.correctAnswers.includes(option);
+                    const isUserAnswer = question.userAnswers.includes(option);
+                    // Use option+idx as key to avoid duplicate/empty key warning
+                    return (
+                      <Box
+                        key={option || '' + idx}
+>>>>>>> 99ca4a1 (Initial commit)
                         sx={{
                           p: 1,
                           mb: 1,
@@ -521,6 +668,7 @@ export default function QuizResultsPage() {
 
               {question.type === 'multiple-select' && (
                 <Box sx={{ mb: 2 }}>
+<<<<<<< HEAD
                   {question.options.map((option) => {
                     const isCorrect = question.correctAnswers.includes(option);
                     const isUserAnswer = question.userAnswers.includes(option);
@@ -528,6 +676,14 @@ export default function QuizResultsPage() {
                     return (
                       <Box
                         key={option}
+=======
+                  {question.options.map((option, idx) => {
+                    const isCorrect = question.correctAnswers.includes(option);
+                    const isUserAnswer = question.userAnswers.includes(option);
+                    return (
+                      <Box
+                        key={option || '' + idx}
+>>>>>>> 99ca4a1 (Initial commit)
                         sx={{
                           p: 1,
                           mb: 1,
@@ -556,6 +712,7 @@ export default function QuizResultsPage() {
 
               {question.type === 'true-false' && (
                 <Box sx={{ mb: 2 }}>
+<<<<<<< HEAD
                   {question.options.map((option) => {
                     const isCorrect = question.correctAnswers.includes(option);
                     const isUserAnswer = question.userAnswers.includes(option);
@@ -563,6 +720,14 @@ export default function QuizResultsPage() {
                     return (
                       <Box
                         key={option}
+=======
+                  {question.options.map((option, idx) => {
+                    const isCorrect = question.correctAnswers.includes(option);
+                    const isUserAnswer = question.userAnswers.includes(option);
+                    return (
+                      <Box
+                        key={option || '' + idx}
+>>>>>>> 99ca4a1 (Initial commit)
                         sx={{
                           p: 1,
                           mb: 1,

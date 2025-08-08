@@ -333,6 +333,17 @@ export default function QuizListPage() {
                   Created: {formatDate(quiz.createdAt)}
                 </Typography>
               </CardContent>
+<<<<<<< HEAD
+=======
+              <Button
+                variant="outlined"
+                fullWidth
+                sx={{ mt: 2 }}
+                onClick={() => router.push(`/teacher/quiz/${quiz._id}`)}
+              >
+                Manage
+              </Button>
+>>>>>>> 99ca4a1 (Initial commit)
             </Card>
           ))}
         </Box>

@@ -1,6 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+<<<<<<< HEAD
+=======
+import MathRenderer from '@/components/MathRenderer';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+>>>>>>> 99ca4a1 (Initial commit)
 import {
   Box,
   Paper,
@@ -10,7 +15,10 @@ import {
   Stepper,
   Step,
   StepLabel,
+<<<<<<< HEAD
   Grid,
+=======
+>>>>>>> 99ca4a1 (Initial commit)
   Card,
   CardContent,
   FormControl,
@@ -41,6 +49,10 @@ import {
   Snackbar,
   CircularProgress
 } from '@mui/material';
+<<<<<<< HEAD
+=======
+import Grid from '@mui/material/Grid';
+>>>>>>> 99ca4a1 (Initial commit)
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
@@ -66,7 +78,11 @@ import { useRouter } from 'next/navigation';
 
 interface Question {
   id: string;
+<<<<<<< HEAD
   type: 'multiple_choice' | 'multiple_select' | 'true_false' | 'short_answer' | 'essay' | 'fill_blank' | 'matching' | 'ordering';
+=======
+  type: 'multiple_choice' | 'multiple_select' | 'true_false' | 'short_answer' | 'essay' | 'fill_blank';
+>>>>>>> 99ca4a1 (Initial commit)
   question: string;
   options?: string[];
   correctAnswers: string[] | number[];
@@ -97,6 +113,12 @@ interface QuizData {
   status: 'draft' | 'published';
 }
 
+<<<<<<< HEAD
+=======
+// Remove all trial questions from TEST_QUESTIONS
+const TEST_QUESTIONS: Question[] = [];
+
+>>>>>>> 99ca4a1 (Initial commit)
 const steps = ['Quiz Details', 'Questions', 'Settings', 'Preview'];
 
 const questionTypes = [
@@ -105,9 +127,13 @@ const questionTypes = [
   { value: 'true_false', label: 'True/False' },
   { value: 'short_answer', label: 'Short Answer' },
   { value: 'essay', label: 'Essay/Open Response' },
+<<<<<<< HEAD
   { value: 'fill_blank', label: 'Fill in the Blank' },
   { value: 'matching', label: 'Matching' },
   { value: 'ordering', label: 'Ordering/Sequence' }
+=======
+  { value: 'fill_blank', label: 'Fill in the Blank' }
+>>>>>>> 99ca4a1 (Initial commit)
 ];
 
 export default function CreateQuizPage() {
@@ -126,25 +152,39 @@ export default function CreateQuizPage() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
+<<<<<<< HEAD
+=======
+  // For testing: prefill quizData with all types
+>>>>>>> 99ca4a1 (Initial commit)
   const [quizData, setQuizData] = useState<QuizData>({
     title: '',
     description: '',
     instructions: '',
     classId: '',
     subjectId: '',
+<<<<<<< HEAD
     timeLimit: 60,
     attemptsAllowed: 1,
     startDate: null,
     endDate: null,
+=======
+    timeLimit: 30,
+    attemptsAllowed: 1,
+>>>>>>> 99ca4a1 (Initial commit)
     randomizeQuestions: false,
     randomizeAnswers: false,
     showCorrectAnswers: true,
     showScoreImmediately: true,
     oneQuestionAtTime: false,
     passwordProtected: false,
+<<<<<<< HEAD
     password: '',
     questions: [],
     status: 'draft'
+=======
+    questions: [],
+    status: 'draft',
+>>>>>>> 99ca4a1 (Initial commit)
   });
 
   // Enhanced logging for quiz data changes
@@ -915,6 +955,7 @@ export default function CreateQuizPage() {
               <Typography variant="body1" paragraph>
                 {question.question}
               </Typography>
+<<<<<<< HEAD
               
               {question.type === 'multiple_choice' && question.options && (
                 <RadioGroup>
@@ -941,13 +982,63 @@ export default function CreateQuizPage() {
                 </FormGroup>
               )}
               
+=======
+              {/* Multiple Choice/Select with A, B, C, D... labels */}
+              {(question.type === 'multiple_choice' || question.type === 'multiple_select') && question.options && (
+                <Box>
+                  {(question.type === 'multiple_choice') ? (
+                    <RadioGroup>
+                      {question.options.map((option, optIndex) => {
+                        const optionLetter = String.fromCharCode(65 + optIndex); // A, B, C, ...
+                        return (
+                          <FormControlLabel
+                            key={optIndex}
+                            value={optIndex}
+                            control={<Radio />}
+                            label={
+                              <Box display="flex" alignItems="center">
+                                <Box sx={{ minWidth: 24, fontWeight: 'bold', color: 'primary.main', mr: 1 }}>{optionLetter}</Box>
+                                <MathRenderer content={option} />
+                              </Box>
+                            }
+                          />
+                        );
+                      })}
+                    </RadioGroup>
+                  ) : (
+                    <FormGroup>
+                      {question.options.map((option, optIndex) => {
+                        const optionLetter = String.fromCharCode(65 + optIndex);
+                        return (
+                          <FormControlLabel
+                            key={optIndex}
+                            control={<Checkbox />}
+                            label={
+                              <Box display="flex" alignItems="center">
+                                <Box sx={{ minWidth: 24, fontWeight: 'bold', color: 'primary.main', mr: 1 }}>{optionLetter}</Box>
+                                <MathRenderer content={option} />
+                              </Box>
+                            }
+                          />
+                        );
+                      })}
+                    </FormGroup>
+                  )}
+                </Box>
+              )}
+              {/* True/False */}
+>>>>>>> 99ca4a1 (Initial commit)
               {question.type === 'true_false' && (
                 <RadioGroup>
                   <FormControlLabel value="true" control={<Radio />} label="True" />
                   <FormControlLabel value="false" control={<Radio />} label="False" />
                 </RadioGroup>
               )}
+<<<<<<< HEAD
               
+=======
+              {/* Short Answer/Fill Blank */}
+>>>>>>> 99ca4a1 (Initial commit)
               {(question.type === 'short_answer' || question.type === 'fill_blank') && (
                 <TextField
                   fullWidth
@@ -956,7 +1047,11 @@ export default function CreateQuizPage() {
                   disabled
                 />
               )}
+<<<<<<< HEAD
               
+=======
+              {/* Essay */}
+>>>>>>> 99ca4a1 (Initial commit)
               {question.type === 'essay' && (
                 <TextField
                   fullWidth
@@ -1196,6 +1291,19 @@ function QuestionEditorDialog({ open, question, onSave, onClose, onChange }: Que
     updateQuestion({ options: newOptions });
   };
 
+<<<<<<< HEAD
+=======
+  // Prefill a trial matching question for demonstration
+  useEffect(() => {
+    if (question.type === 'matching' && (!question.options || question.options.length === 0)) {
+      updateQuestion({
+        options: ['Nigeria', 'Ghana', 'Kenya'],
+        correctAnswers: ['Abuja', 'Accra', 'Nairobi']
+      });
+    }
+  }, [question.type]);
+
+>>>>>>> 99ca4a1 (Initial commit)
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
@@ -1233,12 +1341,37 @@ function QuestionEditorDialog({ open, question, onSave, onClose, onChange }: Que
               <TextField
                 fullWidth
                 multiline
+<<<<<<< HEAD
                 rows={3}
                 label="Question"
                 value={question.question || ''}
                 onChange={(e) => updateQuestion({ question: e.target.value })}
                 placeholder="Enter your question here..."
               />
+=======
+                rows={6}
+                label="Question (supports LaTeX: $...$ or $$...$$)"
+                value={question.question || ''}
+                onChange={(e) => updateQuestion({ question: e.target.value })}
+                placeholder="Enter your question here..."
+                sx={{ mb: 2, fontSize: '1.2rem' }}
+                InputProps={{ style: { fontSize: '1.2rem', minHeight: 120 } }}
+              />
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Preview:
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 2, minHeight: 48 }}>
+                  {question.question && (/\$(.+?)\$|\$\$(.+?)\$\$|\\\[(.+?)\\\]/g.test(question.question)) ? (
+                    <MathRenderer
+                      content={question.question.replace(/\\\[(.+?)\\\]/g, (_, expr) => `$$${expr}$$`)}
+                    />
+                  ) : (
+                    <Typography variant="body1">{question.question}</Typography>
+                  )}
+                </Paper>
+              </Box>
+>>>>>>> 99ca4a1 (Initial commit)
             </Grid>
 
             {/* Options for multiple choice questions */}
@@ -1247,6 +1380,7 @@ function QuestionEditorDialog({ open, question, onSave, onClose, onChange }: Que
                 <Typography variant="h6" gutterBottom>
                   Answer Options
                 </Typography>
+<<<<<<< HEAD
                 {question.options?.map((option, index) => (
                   <Box key={index} display="flex" alignItems="center" sx={{ mb: 2 }}>
                     <TextField
@@ -1286,12 +1420,123 @@ function QuestionEditorDialog({ open, question, onSave, onClose, onChange }: Que
                     </IconButton>
                   </Box>
                 ))}
+=======
+                {question.options?.map((option, index) => {
+                  const optionLetter = String.fromCharCode(65 + index); // A, B, C, ...
+                  return (
+                    <Box key={index} display="flex" alignItems="flex-start" sx={{ mb: 2 }}>
+                      <Box flex={1} mr={2}>
+                        <TextField
+                          fullWidth
+                          label={`Option ${optionLetter}`}
+                          value={option || ''}
+                          onChange={(e) => updateOption(index, e.target.value)}
+                          sx={{ mb: 1 }}
+                          InputProps={{ startAdornment: (
+                            <Box sx={{ minWidth: 24, fontWeight: 'bold', color: 'primary.main', mr: 1 }}>
+                              {optionLetter}
+                            </Box>
+                          ) }}
+                        />
+                        <Box sx={{ minHeight: 32 }}>
+                          <MathRenderer content={option || ''} />
+                        </Box>
+                      </Box>
+                      <FormControlLabel
+                        control={
+                          question.type === 'multiple_choice' ? (
+                            <Radio
+                              checked={question.correctAnswers.includes(option)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  updateQuestion({ correctAnswers: [option] });
+                                }
+                              }}
+                            />
+                          ) : (
+                            <Checkbox
+                              checked={question.correctAnswers.includes(option)}
+                              onChange={(e) => {
+                                const newCorrectAnswers = e.target.checked
+                                  ? [...question.correctAnswers, option]
+                                  : question.correctAnswers.filter(a => a !== option);
+                                updateQuestion({ correctAnswers: newCorrectAnswers });
+                              }}
+                            />
+                          )
+                        }
+                        label="Correct"
+                      />
+                      <IconButton onClick={() => removeOption(index)} color="error" sx={{ mt: 1 }}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  );
+                })}
+>>>>>>> 99ca4a1 (Initial commit)
                 <Button startIcon={<AddIcon />} onClick={addOption}>
                   Add Option
                 </Button>
               </Grid>
             )}
 
+<<<<<<< HEAD
+=======
+  {/* Short Answer */}
+  {question.type === 'short_answer' && (
+    <Grid item xs={12}>
+      <Typography variant="h6" gutterBottom>
+        Correct Answer <span style={{ color: 'red' }}>*</span>
+      </Typography>
+      <TextField
+        fullWidth
+        label="Correct Answer"
+        value={question.correctAnswers[0] || ''}
+        onChange={e => updateQuestion({ correctAnswers: [e.target.value] })}
+        error={!question.correctAnswers[0]}
+        helperText={!question.correctAnswers[0] ? 'Please provide a correct answer.' : ''}
+        sx={{ mb: 2 }}
+      />
+    </Grid>
+  )}
+
+  {/* Essay */}
+  {question.type === 'essay' && (
+    <Grid item xs={12}>
+      <Typography variant="h6" gutterBottom>
+        Sample Correct Answer (Optional)
+      </Typography>
+      <TextField
+        fullWidth
+        multiline
+        minRows={3}
+        label="Sample Answer"
+        value={question.correctAnswers[0] || ''}
+        onChange={e => updateQuestion({ correctAnswers: [e.target.value] })}
+        sx={{ mb: 2 }}
+      />
+    </Grid>
+  )}
+
+  {/* Fill in the Blank */}
+  {question.type === 'fill_blank' && (
+    <Grid item xs={12}>
+      <Typography variant="h6" gutterBottom>
+        Correct Answer <span style={{ color: 'red' }}>*</span>
+      </Typography>
+      <TextField
+        fullWidth
+        label="Correct Answer"
+        value={question.correctAnswers[0] || ''}
+        onChange={e => updateQuestion({ correctAnswers: [e.target.value] })}
+        error={!question.correctAnswers[0]}
+        helperText={!question.correctAnswers[0] ? 'Please provide a correct answer.' : ''}
+        sx={{ mb: 2 }}
+      />
+    </Grid>
+  )}
+
+>>>>>>> 99ca4a1 (Initial commit)
             {/* True/False options */}
             {question.type === 'true_false' && (
               <Grid item xs={12}>

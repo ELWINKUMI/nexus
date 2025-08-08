@@ -1,6 +1,14 @@
+<<<<<<< HEAD
 'use client';
 
 import React, { useState, useEffect } from 'react';
+=======
+
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import MathRenderer from '@/components/MathRenderer';
+>>>>>>> 99ca4a1 (Initial commit)
 import {
   Box,
   Container,
@@ -70,12 +78,24 @@ interface QuizAttempt {
   status: 'in-progress' | 'submitted';
 }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 99ca4a1 (Initial commit)
 export default function QuizTakingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quizId = searchParams.get('id');
   const attemptId = searchParams.get('attemptId');
 
+<<<<<<< HEAD
+=======
+  // Password protection state
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [quizPassword, setQuizPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+>>>>>>> 99ca4a1 (Initial commit)
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [attempt, setAttempt] = useState<QuizAttempt | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -112,6 +132,7 @@ export default function QuizTakingPage() {
     }
   }, [quizId]);
 
+<<<<<<< HEAD
   const loadQuiz = async () => {
     try {
       setIsLoading(true);
@@ -170,12 +191,79 @@ export default function QuizTakingPage() {
       setQuizStatus('in-progress');
       setIsLoading(false);
       
+=======
+  // Fetch quiz data from backend
+  const loadQuiz = async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch(`/api/student/quizzes/${quizId}`);
+      if (!res.ok) throw new Error('Failed to load quiz');
+      const quizData = await res.json();
+      // Map backend data to Quiz type
+      const backendQuiz: Quiz = {
+        id: quizData.id,
+        title: quizData.title,
+        description: quizData.description,
+        subject: quizData.subject || '',
+        duration: quizData.timeLimit || 30,
+        questions: quizData.questions.map((q: any) => ({
+          id: q.id,
+          question: q.question,
+          type: q.type,
+          options: q.options,
+          correctAnswer: q.correctAnswers || [],
+          points: q.points
+        })),
+        maxAttempts: quizData.attemptsAllowed || 1,
+        isActive: quizData.isActive ?? true,
+        createdAt: quizData.createdAt || new Date().toISOString()
+      };
+      setQuiz(backendQuiz);
+      setTimeRemaining(backendQuiz.duration * 60);
+      if (quizData.passwordProtected) {
+        setShowPasswordDialog(true);
+        setQuizStatus('not-started');
+      } else {
+        setQuizStatus('in-progress');
+      }
+      setIsLoading(false);
+>>>>>>> 99ca4a1 (Initial commit)
     } catch (error) {
       console.error('Error loading quiz:', error);
       setIsLoading(false);
     }
   };
 
+<<<<<<< HEAD
+=======
+  // Start quiz after password check (calls backend to verify password)
+  const startQuizWithPassword = async () => {
+    if (!quiz) return;
+    try {
+      setIsLoading(true);
+      const res = await fetch(`/api/student/quizzes/${quiz.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ password: quizPassword })
+      });
+      if (res.status === 401) {
+        setPasswordError('Incorrect password. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+      if (!res.ok) throw new Error('Failed to start quiz');
+      setQuizStatus('in-progress');
+      setShowPasswordDialog(false);
+      setPasswordError('');
+      setIsLoading(false);
+    } catch (error) {
+      setPasswordError('Failed to start quiz. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+>>>>>>> 99ca4a1 (Initial commit)
   const handleAnswerChange = (questionId: string, answerIndex: number, isMultipleAnswer: boolean = false) => {
     setSelectedAnswers(prev => {
       if (isMultipleAnswer) {
@@ -263,6 +351,47 @@ export default function QuizTakingPage() {
     );
   }
 
+<<<<<<< HEAD
+=======
+  // Password Dialog
+  if (showPasswordDialog && quizStatus === 'not-started') {
+    return (
+      <Container maxWidth="sm" sx={{ py: 8 }}>
+        <Dialog open={showPasswordDialog} onClose={() => setShowPasswordDialog(false)}>
+          <DialogTitle>Enter Quiz Password</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              This quiz is password protected. Please enter the password to begin.
+            </Typography>
+            <TextField
+              label="Quiz Password"
+              type="password"
+              fullWidth
+              value={quizPassword}
+              onChange={e => setQuizPassword(e.target.value)}
+              error={!!passwordError}
+              helperText={passwordError}
+              autoFocus
+              sx={{ mb: 2 }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  startQuizWithPassword();
+                }
+              }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowPasswordDialog(false)}>Cancel</Button>
+            <Button variant="contained" onClick={startQuizWithPassword}>
+              Start Quiz
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Container>
+    );
+  }
+
+>>>>>>> 99ca4a1 (Initial commit)
   if (!quiz) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -332,7 +461,11 @@ export default function QuizTakingPage() {
                 <Box sx={{ mb: 3 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                     <Typography variant="h6" sx={{ flex: 1 }}>
+<<<<<<< HEAD
                       {currentQuestion.question}
+=======
+                      <MathRenderer content={currentQuestion.question} inline={false} />
+>>>>>>> 99ca4a1 (Initial commit)
                     </Typography>
                     <Tooltip title={flaggedQuestions.has(currentQuestion.id) ? "Remove flag" : "Flag for review"}>
                       <IconButton

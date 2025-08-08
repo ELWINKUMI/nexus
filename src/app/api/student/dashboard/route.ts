@@ -39,11 +39,22 @@ export async function GET() {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
     }
 
+<<<<<<< HEAD
+=======
+    // Get school name
+    let schoolName = '';
+    if (student.schoolId) {
+      const school = await (await import('@/models')).School.findOne({ _id: student.schoolId });
+      schoolName = school?.name || '';
+    }
+
+>>>>>>> 99ca4a1 (Initial commit)
     let studentClass = null;
     let subjects = [];
     let assignments = [];
     let quizzes = [];
     let teachers = [];
+<<<<<<< HEAD
     let teacherAssignments = []; // Declare here so it's accessible in the subjects.map() later
 
     if (student.classId) {
@@ -81,6 +92,19 @@ export async function GET() {
         id: { $in: teacherIds },
         role: 'teacher'
       });
+=======
+    let teacherAssignments = [];
+
+    if (student.classId) {
+      studentClass = await Class.findById(student.classId);
+      teacherAssignments = await TeacherAssignment.find({ classId: student.classId });
+      const subjectIds = [...new Set(teacherAssignments.map(ta => ta.subjectId))];
+      const teacherIds = [...new Set(teacherAssignments.map(ta => ta.teacherId))];
+      subjects = await Subject.find({ _id: { $in: subjectIds } });
+      assignments = await Assignment.find({ classId: student.classId });
+      quizzes = await Quiz.find({ classId: student.classId });
+      teachers = await User.find({ id: { $in: teacherIds }, role: 'teacher' });
+>>>>>>> 99ca4a1 (Initial commit)
     }
 
     // Format data for dashboard (without statistics)
@@ -89,7 +113,12 @@ export async function GET() {
         id: student.id,
         name: student.name,
         email: student.email,
+<<<<<<< HEAD
         className: studentClass?.name || 'Not assigned'
+=======
+        className: studentClass?.name || 'Not assigned',
+        schoolName: schoolName
+>>>>>>> 99ca4a1 (Initial commit)
       },
       subjects: subjects.map(subject => {
         // Find the teacher assigned to teach this subject in this class

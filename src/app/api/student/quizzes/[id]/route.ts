@@ -1,3 +1,104 @@
+<<<<<<< HEAD
+=======
+// PATCH - Autosave quiz progress or submit quiz attempt
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await dbConnect();
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token');
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const decoded = jwt.verify(token.value, JWT_SECRET) as any;
+    const studentId = decoded.id;
+    const { id: quizId } = await params;
+
+    // Find the latest in_progress attempt for this student and quiz
+    const attempt = await QuizAttempt.findOne({
+      quizId,
+      studentId,
+      status: 'in_progress'
+    }).sort({ createdAt: -1 });
+
+    if (!attempt) {
+      return NextResponse.json({ error: 'No active attempt found' }, { status: 404 });
+    }
+
+    // Parse answers and other fields from request body
+    const body = await request.json();
+    const { answers, flaggedQuestions, currentQuestion, autosave, endTime } = body;
+
+    // If autosave, just update progress fields
+    if (autosave) {
+      if (answers) attempt.answers = answers;
+      if (flaggedQuestions) attempt.flaggedQuestions = flaggedQuestions;
+      if (typeof currentQuestion === 'number') attempt.currentQuestion = currentQuestion;
+      await attempt.save();
+      return NextResponse.json({ success: true });
+    }
+
+    // Otherwise, treat as submission
+    // Fetch the quiz to get correct answers and points
+    const quiz = await Quiz.findOne({ _id: quizId });
+    if (!quiz) {
+      return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
+    }
+
+    // Grade the quiz
+    let totalScore = 0;
+    let totalPossible = 0;
+    const gradedAnswers = [];
+    for (const q of quiz.questions) {
+      totalPossible += q.points || 1;
+      const studentAnsObj = answers.find((a: any) => a.questionId === q.id);
+      let studentAnswer = studentAnsObj ? studentAnsObj.selectedAnswers : [];
+      if (!Array.isArray(studentAnswer)) studentAnswer = [studentAnswer];
+      let isCorrect = false;
+      // Compare answers based on type
+      if (q.type === 'multiple_choice' || q.type === 'multiple_select') {
+        // Compare as sets of strings
+        const correct = (q.correctAnswers || []).map(String).sort();
+        const student = (studentAnswer || []).map(String).sort();
+        isCorrect = JSON.stringify(correct) === JSON.stringify(student);
+      } else if (q.type === 'true_false' || q.type === 'short_answer' || q.type === 'fill_blank') {
+        isCorrect = (q.correctAnswers && q.correctAnswers[0] && studentAnswer[0]) && (String(q.correctAnswers[0]).trim().toLowerCase() === String(studentAnswer[0]).trim().toLowerCase());
+      } else {
+        // For other types, skip grading or add custom logic
+        isCorrect = false;
+      }
+      if (isCorrect) totalScore += q.points || 1;
+      gradedAnswers.push({
+        questionId: q.id,
+        studentAnswer,
+        correctAnswer: q.correctAnswers,
+        isCorrect,
+        points: q.points || 1
+      });
+    }
+    const percentage = totalPossible > 0 ? (totalScore / totalPossible) * 100 : 0;
+
+    // Save answers and mark as completed
+    attempt.answers = gradedAnswers;
+    attempt.totalPoints = totalScore;
+    attempt.percentage = percentage;
+    if (endTime) attempt.endTime = new Date(endTime);
+    attempt.status = 'completed';
+    attempt.submittedAt = new Date();
+    await attempt.save();
+
+        return NextResponse.json({ message: 'Quiz submitted successfully', score: totalScore }, { status: 200 });
+  } catch (error) {
+    console.error('Error in PATCH quiz attempt:', error);
+    return NextResponse.json(
+      { error: 'Failed to process quiz attempt' },
+      { status: 500 }
+    );
+  }
+}
+>>>>>>> 99ca4a1 (Initial commit)
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
@@ -132,9 +233,21 @@ export async function GET(
 
     // Prepare quiz data for student (without correct answers)
     const questions = isTeacherQuiz ? quiz.questions : quiz.questions;
+<<<<<<< HEAD
     const questionsForStudent = questions.map((q: any) => ({
       id: q.id,
       type: q.type,
+=======
+    // Map backend types to frontend expected types
+    const typeMap: Record<string, string> = {
+      'multiple_choice': 'multiple-choice',
+      'multiple_select': 'multiple-select',
+      'true_false': 'true-false',
+    };
+    const questionsForStudent = questions.map((q: any) => ({
+      id: q.id,
+      type: typeMap[q.type] || q.type,
+>>>>>>> 99ca4a1 (Initial commit)
       question: q.question,
       options: q.options,
       points: q.points,
@@ -144,6 +257,18 @@ export async function GET(
     console.log('Quiz questions for student:', questionsForStudent);
     console.log('First question options:', questionsForStudent[0]?.options);
 
+<<<<<<< HEAD
+=======
+    // Calculate timeRemaining based on scheduled start time
+    const scheduledStart = quiz.startDate ? new Date(quiz.startDate) : null;
+    const nowTime = new Date();
+    let timeRemaining = (quiz.timeLimit || 30) * 60; // default in seconds
+    if (scheduledStart) {
+      const elapsed = Math.floor((nowTime.getTime() - scheduledStart.getTime()) / 1000);
+      timeRemaining = Math.max(0, ((quiz.timeLimit || 30) * 60) - elapsed);
+    }
+
+>>>>>>> 99ca4a1 (Initial commit)
     const quizData = {
       id: isTeacherQuiz ? quiz.id : quiz._id.toString(),
       title: quiz.title,
@@ -161,10 +286,18 @@ export async function GET(
       showCorrectAnswers: quiz.showCorrectAnswers,
       showScoreImmediately: quiz.showScoreImmediately,
       questions: questionsForStudent,
+<<<<<<< HEAD
       activeAttempt: activeAttempt ? {
         id: activeAttempt._id.toString(),
         startTime: activeAttempt.startTime,
         timeRemaining: activeAttempt.timeRemaining,
+=======
+      scheduledStart: scheduledStart ? scheduledStart.toISOString() : null,
+      activeAttempt: activeAttempt ? {
+        id: activeAttempt._id.toString(),
+        startTime: activeAttempt.startTime,
+        timeRemaining,
+>>>>>>> 99ca4a1 (Initial commit)
         answers: activeAttempt.answers,
         flaggedQuestions: activeAttempt.flaggedQuestions
       } : null
@@ -187,7 +320,10 @@ export async function POST(
 ) {
   try {
     await dbConnect();
+<<<<<<< HEAD
     
+=======
+>>>>>>> 99ca4a1 (Initial commit)
     const cookieStore = await cookies();
     const token = cookieStore.get('auth-token');
 
@@ -198,7 +334,13 @@ export async function POST(
     const decoded = jwt.verify(token.value, JWT_SECRET) as any;
     const studentId = decoded.id;
     const { id: quizId } = await params;
+<<<<<<< HEAD
     const body = await request.json();
+=======
+
+    // No request body expected for starting quiz attempt
+    // console.log('[BACKEND POST BODY]', requestBody);
+>>>>>>> 99ca4a1 (Initial commit)
 
     console.log('START Quiz Attempt - Student ID:', studentId, 'Quiz ID:', quizId);
 
@@ -207,7 +349,10 @@ export async function POST(
       id: studentId, 
       role: 'student' 
     });
+<<<<<<< HEAD
     
+=======
+>>>>>>> 99ca4a1 (Initial commit)
     if (!student) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 });
     }
@@ -215,7 +360,10 @@ export async function POST(
     // Try to get real quiz from teacher API first
     let quiz = null;
     let isTeacherQuiz = false;
+<<<<<<< HEAD
     
+=======
+>>>>>>> 99ca4a1 (Initial commit)
     try {
       // Fetch from teacher quizzes API
       const teacherResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3001'}/api/teacher/quiz`, {
@@ -223,7 +371,10 @@ export async function POST(
           'Cookie': `auth-token=${token.value}`
         }
       });
+<<<<<<< HEAD
       
+=======
+>>>>>>> 99ca4a1 (Initial commit)
       if (teacherResponse.ok) {
         const allTeacherQuizzes = await teacherResponse.json();
         // Find the specific quiz for this student's class and published status
@@ -232,7 +383,10 @@ export async function POST(
           (q.classId === student.classId || q.schoolId === student.schoolId) &&
           q.status === 'published'
         );
+<<<<<<< HEAD
         
+=======
+>>>>>>> 99ca4a1 (Initial commit)
         if (teacherQuiz) {
           quiz = teacherQuiz;
           isTeacherQuiz = true;
@@ -250,7 +404,10 @@ export async function POST(
         schoolId: student.schoolId,
         status: 'published'
       });
+<<<<<<< HEAD
       
+=======
+>>>>>>> 99ca4a1 (Initial commit)
       if (dbQuiz) {
         quiz = dbQuiz;
       }
@@ -260,10 +417,14 @@ export async function POST(
       return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
     }
 
+<<<<<<< HEAD
     // Verify password if required
     if (quiz.passwordProtected && body.password !== quiz.password) {
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
     }
+=======
+    // Password protection removed: no password check
+>>>>>>> 99ca4a1 (Initial commit)
 
     // Check for existing active attempt
     const activeAttempt = await QuizAttempt.findOne({
@@ -282,16 +443,32 @@ export async function POST(
     // Create new attempt
     const totalPoints = isTeacherQuiz ? quiz.totalPoints : quiz.totalPoints;
     const timeLimit = quiz.timeLimit;
+<<<<<<< HEAD
     
+=======
+    // Use scheduled start time for timer
+    const scheduledStart = quiz.startDate ? new Date(quiz.startDate) : new Date();
+    const nowTime = new Date();
+    let timeRemaining = (quiz.timeLimit || 30) * 60;
+    if (scheduledStart) {
+      const elapsed = Math.floor((nowTime.getTime() - scheduledStart.getTime()) / 1000);
+      timeRemaining = Math.max(0, ((quiz.timeLimit || 30) * 60) - elapsed);
+    }
+>>>>>>> 99ca4a1 (Initial commit)
     const newAttempt = new QuizAttempt({
       quizId,
       studentId,
       studentName: student.name,
       classId: student.classId,
       schoolId: student.schoolId,
+<<<<<<< HEAD
       startTime: new Date(),
       totalPoints: totalPoints,
       timeRemaining: timeLimit * 60, // Convert to seconds
+=======
+      startTime: scheduledStart,
+      totalPoints: totalPoints,
+>>>>>>> 99ca4a1 (Initial commit)
       answers: [],
       flaggedQuestions: [],
       status: 'in_progress'
@@ -304,7 +481,11 @@ export async function POST(
     return NextResponse.json({
       attemptId: newAttempt._id.toString(),
       startTime: newAttempt.startTime,
+<<<<<<< HEAD
       timeRemaining: newAttempt.timeRemaining
+=======
+      timeRemaining
+>>>>>>> 99ca4a1 (Initial commit)
     });
   } catch (error) {
     console.error('Error starting quiz attempt:', error);

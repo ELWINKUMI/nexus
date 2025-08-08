@@ -71,6 +71,7 @@ interface Quiz {
 export default function StudentQuizzesPage() {
   const router = useRouter();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+<<<<<<< HEAD
   const [filteredQuizzes, setFilteredQuizzes] = useState<Quiz[]>([]);
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -215,10 +216,44 @@ export default function StudentQuizzesPage() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Breadcrumbs */}
+=======
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch quizzes from API
+    const fetchQuizzes = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/student/quizzes', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setQuizzes(data);
+        }
+      } catch (e) {
+        // Optionally handle error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchQuizzes();
+  }, []);
+
+  // Helper to determine if attempts are exhausted
+  const isAttemptsExceeded = (quiz: Quiz) => {
+    // Use only backend values, default to 0 if undefined
+    const attempts = typeof quiz.attempts === 'number' ? quiz.attempts : 0;
+    const maxAttempts = typeof quiz.maxAttempts === 'number' ? quiz.maxAttempts : 0;
+    return maxAttempts > 0 && attempts >= maxAttempts;
+  };
+
+  return (
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+>>>>>>> 99ca4a1 (Initial commit)
       <Breadcrumbs sx={{ mb: 3 }}>
         <Link href="/student" underline="hover">Dashboard</Link>
         <Typography color="text.primary">Quizzes</Typography>
       </Breadcrumbs>
+<<<<<<< HEAD
 
       {/* Header */}
       <Box sx={{ mb: 4 }}>
@@ -529,6 +564,81 @@ export default function StudentQuizzesPage() {
           </>
         )}
       </Dialog>
+=======
+      <Typography variant="h4" fontWeight="bold" sx={{ mb: 2 }}>
+        My Quizzes
+      </Typography>
+      {isLoading ? (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="40vh">
+          <LinearProgress sx={{ width: '100%', maxWidth: 400 }} />
+        </Box>
+      ) : quizzes.length === 0 ? (
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <QuizIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h5" gutterBottom>No quizzes found</Typography>
+          <Typography variant="body2" color="text.secondary">
+            You currently have no quizzes assigned.
+          </Typography>
+        </Paper>
+      ) : (
+        <Grid container spacing={3}>
+          {quizzes.map((quiz) => {
+            const attempts = typeof quiz.attempts === 'number' ? quiz.attempts : 0;
+            const maxAttempts = typeof quiz.maxAttempts === 'number' ? quiz.maxAttempts : 0;
+            return (
+              <Grid item xs={12} sm={6} md={4} key={quiz.id}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <QuizIcon color="primary" />
+                      <Typography variant="h6" fontWeight="bold" noWrap>{quiz.title}</Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1, minHeight: 40 }}>
+                      {quiz.description}
+                    </Typography>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                      <Chip label={quiz.subject} size="small" color="primary" />
+                      <Typography variant="caption" color="text.secondary">{quiz.teacher}</Typography>
+                    </Stack>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                      <TimerIcon fontSize="small" />
+                      <Typography variant="caption">{quiz.timeLimit} min</Typography>
+                      <Typography variant="caption" color="text.secondary">• {quiz.totalQuestions} Qs</Typography>
+                    </Stack>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                      <ScheduleIcon fontSize="small" />
+                      <Typography variant="caption" color={quiz.status === 'overdue' ? 'error.main' : 'text.secondary'}>
+                        {quiz.dueDate ? new Date(quiz.dueDate).toLocaleDateString() : 'No due date'}
+                      </Typography>
+                    </Stack>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                      <Typography variant="caption" color="text.secondary">
+                        Attempts: {attempts}/{maxAttempts > 0 ? maxAttempts : '∞'}
+                      </Typography>
+                      <Chip label={quiz.difficulty} size="small" color={quiz.difficulty === 'easy' ? 'success' : quiz.difficulty === 'medium' ? 'warning' : 'error'} />
+                    </Box>
+                    <Button
+                      fullWidth
+                      variant={quiz.status === 'available' ? 'contained' : 'outlined'}
+                      startIcon={quiz.status === 'completed' ? <CompletedIcon /> : <StartIcon />}
+                      onClick={() => router.push(`/student/quizzes/${quiz.id}`)}
+                      disabled={quiz.status !== 'available' || isAttemptsExceeded(quiz)}
+                      sx={{ mt: 1 }}
+                    >
+                      {isAttemptsExceeded(quiz)
+                        ? 'No Attempts Left'
+                        : quiz.status === 'completed' ? 'View Results'
+                        : quiz.status === 'available' ? 'Start Quiz'
+                        : quiz.status.charAt(0).toUpperCase() + quiz.status.slice(1)}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
+      )}
+>>>>>>> 99ca4a1 (Initial commit)
     </Container>
   );
 }

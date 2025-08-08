@@ -475,7 +475,11 @@ export default function StudentGradesPage() {
                             color: grade.percentage !== null ? getGradeColor(grade.percentage) : '#9E9E9E'
                           }}
                         >
+<<<<<<< HEAD
                           {grade.percentage !== null ? `${grade.percentage}%` : '-'}
+=======
+                          {grade.percentage !== null ? `${Math.round(grade.percentage)}%` : '-'}
+>>>>>>> 99ca4a1 (Initial commit)
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           ({grade.letterGrade})

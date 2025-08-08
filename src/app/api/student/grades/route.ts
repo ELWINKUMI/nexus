@@ -10,7 +10,11 @@ export async function GET(request: NextRequest) {
   try {
     await dbConnect();
     
+<<<<<<< HEAD
     const cookieStore = await cookies();
+=======
+    const cookieStore = cookies();
+>>>>>>> 99ca4a1 (Initial commit)
     const token = cookieStore.get('auth-token');
 
     if (!token) {
@@ -68,7 +72,11 @@ export async function GET(request: NextRequest) {
         totalMarks: assignments[0].totalMarks,
         teacherId: assignments[0].teacherId,
         hasSubmissions: assignments[0].submissions?.length || 0
+<<<<<<< HEAD
       });
+=======
+      })
+>>>>>>> 99ca4a1 (Initial commit)
     }
 
     // Create lookup maps
@@ -157,18 +165,73 @@ export async function GET(request: NextRequest) {
           feedback: submission.grade.feedback,
           status: 'graded'
         };
+<<<<<<< HEAD
       });
 
     // Transform quiz attempts to grades (including ungraded ones)
     const quizGrades = quizzes
       .map((quiz: any) => {
+=======
+      })
+
+    // Transform quiz attempts to grades (including ungraded ones)
+    const quizGrades = await Promise.all(
+      quizzes.map(async (quiz: any) => {
+>>>>>>> 99ca4a1 (Initial commit)
         const attempt = attemptMap[quiz._id.toString()];
         const subject = subjectMap[quiz.subjectId?.toString()];
         const classInfo = classMap[quiz.classId?.toString()];
         const teacher = teacherMap[quiz.teacherId];
+<<<<<<< HEAD
         
         if (!attempt) {
           // No attempt - show as missing work
+=======
+        const now = new Date();
+        const quizEnd = quiz.endDate ? new Date(quiz.endDate) : null;
+        if (!attempt) {
+          // If quiz is overdue, auto-grade as 0 and create a QuizAttempt record
+          if (quizEnd && now > quizEnd) {
+            // Only create if not already created (double-check)
+            const existing = await QuizAttempt.findOne({ quizId: quiz._id.toString(), studentId, status: 'completed' });
+            let autoAttempt = existing;
+            if (!existing) {
+              autoAttempt = await QuizAttempt.create({
+                quizId: quiz._id.toString(),
+                studentId,
+                studentName: student.name,
+                classId: student.classId,
+                schoolId: student.schoolId,
+                startTime: quizEnd,
+                endTime: quizEnd,
+                submittedAt: quizEnd,
+                totalPoints: 0,
+                percentage: 0,
+                status: 'completed',
+                answers: [],
+                flaggedQuestions: [],
+                feedback: 'Missed quiz deadline',
+              });
+            }
+            return {
+              id: `quiz_${quiz._id}_${autoAttempt._id}`,
+              title: quiz.title,
+              type: 'quiz',
+              subject: subject?.name || 'Unknown Subject',
+              subjectColor: subject?.color || '#2196F3',
+              teacher: teacher?.name || `Teacher ${quiz.teacherId?.slice(-4) || 'Unknown'}`,
+              score: 0,
+              maxPoints: quiz.totalPoints || 100,
+              percentage: 0,
+              letterGrade: 'F',
+              submittedAt: quizEnd.toISOString(),
+              gradedAt: quizEnd.toISOString(),
+              feedback: 'Missed quiz deadline',
+              status: 'graded'
+            };
+          }
+          // Not overdue yet, show as missing
+>>>>>>> 99ca4a1 (Initial commit)
           return {
             id: `quiz_${quiz._id}_missing`,
             title: quiz.title,
@@ -195,16 +258,28 @@ export async function GET(request: NextRequest) {
           subject: subject?.name || 'Unknown Subject',
           subjectColor: subject?.color || '#2196F3',
           teacher: teacher?.name || `Teacher ${quiz.teacherId?.slice(-4) || 'Unknown'}`,
+<<<<<<< HEAD
           score: attempt.score || 0,
           maxPoints: attempt.maxPoints || quiz.totalPoints || 100,
           percentage: attempt.percentage || Math.round((attempt.score / (attempt.maxPoints || quiz.totalPoints || 100)) * 100),
           letterGrade: attempt.letterGrade || getLetterGrade(attempt.percentage || 0),
+=======
+          score: typeof attempt.totalPoints === 'number' ? attempt.totalPoints : 0,
+          maxPoints: typeof quiz.totalPoints === 'number' ? quiz.totalPoints : 100,
+          percentage: typeof attempt.percentage === 'number' ? attempt.percentage : (quiz.totalPoints ? Math.round((attempt.totalPoints / quiz.totalPoints) * 100) : 0),
+          letterGrade: getLetterGrade(typeof attempt.percentage === 'number' ? attempt.percentage : 0),
+>>>>>>> 99ca4a1 (Initial commit)
           submittedAt: attempt.submittedAt || attempt.endTime,
           gradedAt: attempt.submittedAt || attempt.endTime,
           feedback: attempt.feedback,
           status: 'graded'
         };
+<<<<<<< HEAD
       });
+=======
+      })
+    );
+>>>>>>> 99ca4a1 (Initial commit)
 
     const allGrades = [...assignmentGrades, ...quizGrades];
 

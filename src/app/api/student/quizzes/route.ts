@@ -73,6 +73,11 @@ export async function GET(request: NextRequest) {
 
       const transformedQuizzes = teacherQuizzes.map((quiz: any) => {
         const quizAttempts = attemptMap[quiz.id] || [];
+<<<<<<< HEAD
+=======
+        // Only count completed/submitted attempts for the counter
+        const completedAttempts = quizAttempts.filter((a: any) => a.status === 'completed' || a.status === 'submitted');
+>>>>>>> 99ca4a1 (Initial commit)
         
         // Calculate quiz status
         let status = 'available';
@@ -107,7 +112,11 @@ export async function GET(request: NextRequest) {
           timeLimit: quiz.timeLimit,
           totalQuestions: quiz.totalQuestions || quiz.questions?.length || 0,
           totalPoints: quiz.totalPoints,
+<<<<<<< HEAD
           attempts: quizAttempts.length,
+=======
+          attempts: completedAttempts.length,
+>>>>>>> 99ca4a1 (Initial commit)
           maxAttempts: quiz.maxAttempts || quiz.attemptsAllowed,
           status,
           score: latestAttempt?.score,
@@ -178,6 +187,11 @@ export async function GET(request: NextRequest) {
       const subject = subjectMap[quiz.subjectId];
       const cls = classMap[quiz.classId];
       const quizAttempts = attemptMap[quiz._id.toString()] || [];
+<<<<<<< HEAD
+=======
+      // Only count completed/submitted attempts for the counter
+      const completedAttempts = quizAttempts.filter((a: any) => a.status === 'completed' || a.status === 'submitted');
+>>>>>>> 99ca4a1 (Initial commit)
       
       // Calculate quiz status
       let status = 'available';
@@ -215,7 +229,11 @@ export async function GET(request: NextRequest) {
         timeLimit: quiz.timeLimit,
         totalQuestions: quiz.questions.length,
         totalPoints: quiz.totalPoints,
+<<<<<<< HEAD
         attempts: quizAttempts.length,
+=======
+        attempts: completedAttempts.length,
+>>>>>>> 99ca4a1 (Initial commit)
         maxAttempts: quiz.attemptsAllowed,
         status,
         score: latestAttempt?.score,
