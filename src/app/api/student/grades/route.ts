@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     await dbConnect();
     
-<<<<<<< HEAD
+    const co<<<<<<< HEAD
     const cookieStore = await cookies();
 =======
     const cookieStore = cookies();
@@ -280,13 +280,7 @@ export async function GET(request: NextRequest) {
       })
     );
 >>>>>>> 99ca4a1 (Initial commit)
-
-    const allGrades = [...assignmentGrades, ...quizGrades];
-
-    // Calculate subject grades
-    const subjectGradeMap = allGrades.reduce((acc: Record<string, any[]>, grade: any) => {
-      if (!acc[grade.subject]) {
-        acc[grade.subject] = [];
+;
       }
       acc[grade.subject].push(grade);
       return acc;
